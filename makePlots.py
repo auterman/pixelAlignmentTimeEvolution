@@ -18,6 +18,11 @@ with suppressor.suppress_stdout_stderr(): import ROOT
 import downloadViaJson
 import style
 
+#user specific stuff like workdirs
+##import userEnvironment.config 
+import imp
+userEnvironment = imp.load_source('userEnvironment.config', '.')
+
 class Parameter:
     name = ""
     label = ""
@@ -48,7 +53,7 @@ objects = [
     ("FPIX(x-,z+)", ROOT.kMagenta),
 ]
 
-plotDir = "/afs/cern.ch/user/k/kiesel/www/plots"
+plotDir = "/afs/cern.ch/user/a/auterman/public/plots"
 
 def save(name, folder="plots", endings=[".pdf"]):
     for ending in endings:
@@ -153,7 +158,7 @@ def getLuminosity(minRun):
     +-------+------+--------+--------+-------------------+------------------+
     And extracts the total recorded luminosity (/fb).
     """
-    output = subprocess.check_output(["/afs/cern.ch/user/k/kiesel/.local/bin/brilcalc", "lumi", "-b", "STABLE BEAMS", "--normtag=/afs/cern.ch/user/l/lumipro/public/normtag_file/normtag_BRIL.json", "-u", "/fb", "--begin", str(minRun)])
+    output = subprocess.check_output(["/afs/cern.ch/user/a/auterman/.local/bin/brilcalc", "lumi", "-b", "STABLE BEAMS", "--normtag=/afs/cern.ch/user/l/lumipro/public/normtag_file/normtag_BRIL.json", "-u", "/fb", "--begin", str(minRun)])
     return float(output.split("\n")[-3].split("|")[-2])
 
 def getTime(run, dbName="runTime.pkl"):
@@ -335,7 +340,7 @@ if __name__ == "__main__":
     updateTimes = [string2Time(getTime(x)) for x in updateRuns]
     graphsVsTime = getGraphsVsRun(inputHists, convertToTime=True)
     drawGraphsVsX(graphsVsTime, "time", "vsTime", updateTimes)
-    updateFile("indexTemplate.html", "/afs/cern.ch/user/k/kiesel/www/index.html",
+    updateFile("indexTemplate.html", "/afs/cern.ch/user/a/auterman/public/index.html",
         {
             "date": datetime.datetime.today().isoformat(' '),
             "table": getTableString(inputHists)

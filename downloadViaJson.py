@@ -18,8 +18,8 @@ ident = "DQMToJson/1.0 python/%d.%d.%d" % sys.version_info[:3]
 HTTPS = httplib.HTTPSConnection
 
 def getGridCertificat():
-    # Reads in PW from text file ~/.globus/pw, which you have to create yourself
-    out = subprocess.check_output(["cat ~/.globus/pw | voms-proxy-init --voms cms --valid 192:00"], shell=True)
+    # Reads in PW from text file ~/.globus/.pw, which you have to create yourself
+    out = subprocess.check_output(["cat ~/.globus/.pw | voms-proxy-init --voms cms --valid 192:00"], shell=True)
     proxyName = out.split("\n")[4][17:-1]
     return proxyName
 
