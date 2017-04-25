@@ -149,6 +149,25 @@ def getValidRunBefore(run):
             run -=1
     return run
 
+
+def getFieldFromDB(run):
+    bfield = subprocess.check_output(["das_client", "--limit", "0",  "--query", "run={} | grep run.bfield".format(run)])
+    bfieldvals=re.findall("\d+\.\d+", bfield)
+    return -1 if len(bfieldvals) == 0 else bfieldvals[0]
+
+def getField(run, dbName="runField.pkl"):
+    db = {}
+    if os.path.exists(dbName):
+        with open(dbName) as f:
+            db = pickle.load(f)
+    if run not in db or db[run] == "\n":
+    	db[run] = getFieldFromDB(run)
+	print "Got B-Field for run {}: {}".format(run, db[run])
+    with open(dbName, "wb") as f:
+        pickle.dump(db, f)
+    return db[run]
+
+
 def getLuminosity(minRun):
     """Expects something like
     +-------+------+--------+--------+-------------------+------------------+
@@ -159,7 +178,7 @@ def getLuminosity(minRun):
     And extracts the total recorded luminosity (/fb).
     """
     output = subprocess.check_output(["/afs/cern.ch/user/a/auterman/.local/bin/brilcalc", "lumi", "-b", "STABLE BEAMS", "--normtag=/afs/cern.ch/user/l/lumipro/public/normtag_file/normtag_BRIL.json", "-u", "/fb", "--begin", str(minRun)])
-    return float(output.split("\n")[-3].split("|")[-2])
+    return float(output.split("\n")[-4].split("|")[-2])
 
 def getTime(run, dbName="runTime.pkl"):
     db = {}
@@ -211,8 +230,9 @@ def drawHists(hmap, savename, run):
     c.cd(0)
     text = ROOT.TLatex()
     text.SetTextSize(.75*text.GetTextSize())
-    text.DrawLatexNDC(.05, .967, "#scale[1.2]{#font[61]{CMS}} #font[52]{Private Work}")
+    text.DrawLatexNDC(.05, .967, "#scale[1.2]{#font[61]{CMS}} #font[52]{Preliminary}")
     text.DrawLatexNDC(.82, .967, "Run {} (13TeV)".format(run))
+    text.DrawLatexNDC(.15, .899, "#scale[85]{Tracker alignment in 2016 data-taking used as reference}")
     save(savename, plotDir, [".pdf",".png", ".root"])
     if dbUpdated:
         sendMail("kiesel@cern.ch auterman@cern.ch", "[PCL] Cuts exceeded", "Run: {}\nSee cern.ch/test-cmsPixelAlignmentSurveillance".format(run))
@@ -225,11 +245,11 @@ def drawGraphsVsX(gmap, xaxis, savename, specialRuns=[]):
     line.SetLineColor(ROOT.kGray)
     updateLine = ROOT.TLine()
     updateLine.SetLineStyle(2)
-    updateLine.SetLineColor(ROOT.kGray)
+    updateLine.SetLineColor(ROOT.kBlack)
     leg = ROOT.TLegend(.2, .65, .55, .9)
     leg.SetNColumns(2)
-    leg.AddEntry(line, "Limit", "l")
-    leg.AddEntry(updateLine, "New alignment", "l")
+    leg.AddEntry(line, "Update threshold", "l")
+    leg.AddEntry(updateLine, "Alignment update", "l")
     for ip, p in enumerate(parameters):
         c = ROOT.TCanvas(randomName(),"",1200,600)
         for ig,g in enumerate(gmap[p.name]):
@@ -258,13 +278,15 @@ def drawGraphsVsX(gmap, xaxis, savename, specialRuns=[]):
         for r in specialRuns:
             updateLine.DrawLine(r, p.minDraw, r, p.maxDraw)
         text = ROOT.TLatex()
-        text.DrawLatexNDC(.08, .945, "#scale[1.2]{#font[61]{CMS}} #font[52]{Private Work}")
+        text.DrawLatexNDC(.08, .945, "#scale[1.2]{#font[61]{CMS}} #font[52]{Preliminary}")
         text.DrawLatexNDC(.79, .945, "{:.1f} fb^{{-1}} (13TeV)".format(lumi))
+    	text.DrawLatexNDC(.15, .899, "#scale[85]{Tracker alignment in 2016 data-taking used as reference}")
         if ip == 0: leg.Draw()
         save(savename+"_"+p.name, plotDir, endings=[".pdf",".png", ".root"])
 
 
 def string2Time(timeStr):
+    print timeStr
     return ROOT.TDatime(timeStr).Convert(0)
 
 def getGraphsVsRun(inputHists, minRun=-1, convertToTime=False):
@@ -333,6 +355,7 @@ if __name__ == "__main__":
 
     # vs run
     updateRuns = [x for x in getUpdateRuns("TrackerAlignment_PCL_byRun_v0_express") if x >= 273000]
+    updateFields = [getField(x) for x in updateRuns]
     graphsVsRun = getGraphsVsRun(inputHists)
     drawGraphsVsX(graphsVsRun, "run", "vsRun", updateRuns)
 
