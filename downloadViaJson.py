@@ -118,12 +118,12 @@ def getLastRun(path="./"):
 
 def downloadViaJson():
     # downloads files and returns their run numbers
-    #dataset = "/StreamExpress/Run2016B-PromptCalibProdSiPixelAli-Express-v2/ALCAPROMPT"
+    dataset = "/StreamExpress/Run2016B-PromptCalibProdSiPixelAli-Express-v2/ALCAPROMPT"
     #dataset = "/StreamExpress/Run2016C-PromptCalibProdSiPixelAli-Express-v2/ALCAPROMPT"
     #dataset = "/StreamExpress/Run2016D-PromptCalibProdSiPixelAli-Express-v2/ALCAPROMPT"    
     #dataset = "/StreamExpress/Run2016E-PromptCalibProdSiPixelAli-Express-v2/ALCAPROMPT"    
     #dataset = "/StreamExpress/Run2016F-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"
-    dataset = "/StreamExpress/Run2016G-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"    
+    #dataset = "/StreamExpress/Run2016G-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"    
     #dataset = "/StreamExpressPA/PARun2016B-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"
     #dataset = "/StreamExpressPA/PARun2016C-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"    
     #dataset = "/StreamExpressPA/PARun2016D-PromptCalibProdSiPixelAli-Express-v1/ALCAPROMPT"

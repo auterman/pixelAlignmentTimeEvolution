@@ -237,7 +237,7 @@ def drawHists(hmap, savename, run):
     if dbUpdated:
         sendMail("kiesel@cern.ch auterman@cern.ch", "[PCL] Cuts exceeded", "Run: {}\nSee cern.ch/test-cmsPixelAlignmentSurveillance".format(run))
 
-def drawGraphsVsX(gmap, xaxis, savename, specialRuns=[]):
+def drawGraphsVsX(gmap, xaxis, savename, magnetGraph, specialRuns=[]):
     """ Options for xaxis: time, run"""
     lumi = getLuminosity(273000)
     if not gmap: return
@@ -277,6 +277,7 @@ def drawGraphsVsX(gmap, xaxis, savename, specialRuns=[]):
         line.DrawLine(xmin, +p.cut, xmax, +p.cut)
         for r in specialRuns:
             updateLine.DrawLine(r, p.minDraw, r, p.maxDraw)
+	magnetGraph.Draw()    
         text = ROOT.TLatex()
         text.DrawLatexNDC(.08, .945, "#scale[1.2]{#font[61]{CMS}} #font[52]{Preliminary}")
         text.DrawLatexNDC(.79, .945, "{:.1f} fb^{{-1}} (13TeV)".format(lumi))
@@ -342,6 +343,27 @@ def getUpdateRuns(tag):
     out = subprocess.check_output(["conddb", "list", tag])
     return [int(x.split()[0]) for x in out.split("\n")[2:] if x]
 
+
+def stringToSqlTimeString(timeStr):
+    return timeStr.replace(".", "-")
+
+def string2Time(timeStr):
+    return ROOT.TDatime(timeStr).Convert(0)
+
+
+def ReadMagnetFieldHistory(filename):
+    mgnt = ROOT.TGraphErrors()
+    with open(filename) as f:
+        content = f.readlines()
+        for i, line in enumerate(content):
+            timeStr, fieldStr = line.split(",")
+            time = string2Time(stringToSqlTimeString(timeStr))
+            field = float(fieldStr)
+            mgnt.SetPoint(i, time, 0)
+            mgnt.SetPointError(i, 0, 50 if field>3.7 else 0)
+    return mgnt
+
+
 if __name__ == "__main__":
     downloadViaJson.getGridCertificat()
     downloadViaJson.downloadViaJson()
@@ -360,9 +382,11 @@ if __name__ == "__main__":
     drawGraphsVsX(graphsVsRun, "run", "vsRun", updateRuns)
 
     # vs time
+    filename = "magnetHistory.txt"
+    magnetGraph = ReadMagnetFieldHistory(filename)
     updateTimes = [string2Time(getTime(x)) for x in updateRuns]
     graphsVsTime = getGraphsVsRun(inputHists, convertToTime=True)
-    drawGraphsVsX(graphsVsTime, "time", "vsTime", updateTimes)
+    drawGraphsVsX(graphsVsTime, "time", "vsTime", magnetGraph, updateTimes)
     updateFile("indexTemplate.html", "/afs/cern.ch/user/a/auterman/public/index.html",
         {
             "date": datetime.datetime.today().isoformat(' '),
