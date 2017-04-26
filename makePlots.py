@@ -21,6 +21,10 @@ import style
 #user specific stuff like workdirs
 ##import userEnvironment.config 
 import imp
+
+from operator import itemgetter
+from array import array
+
 userEnvironment = imp.load_source('userEnvironment.config', '.')
 
 class Parameter:
@@ -185,6 +189,9 @@ def getTime(run, dbName="runTime.pkl"):
     if os.path.exists(dbName):
         with open(dbName) as f:
             db = pickle.load(f)
+    #if run in db: return db[run]
+#    else: 
+#        return 0
     if run not in db or db[run] == "\n":
         db[run] = getRunEndTime(getValidRunBefore(run))
         db[run] = db[run].replace('"','')
@@ -234,19 +241,21 @@ def drawHists(hmap, savename, run):
     text.DrawLatexNDC(.82, .967, "Run {} (13TeV)".format(run))
     text.DrawLatexNDC(.15, .899, "#scale[85]{Tracker alignment in 2016 data-taking used as reference}")
     save(savename, plotDir, [".pdf",".png", ".root"])
-    if dbUpdated:
-        sendMail("kiesel@cern.ch auterman@cern.ch", "[PCL] Cuts exceeded", "Run: {}\nSee cern.ch/test-cmsPixelAlignmentSurveillance".format(run))
+#    if dbUpdated:
+#        sendMail("kiesel@cern.ch auterman@cern.ch", "[PCL] Cuts exceeded", "Run: {}\nSee cern.ch/test-cmsPixelAlignmentSurveillance".format(run))
 
 def drawGraphsVsX(gmap, xaxis, savename, magnetGraph, specialRuns=[]):
     """ Options for xaxis: time, run"""
-    lumi = getLuminosity(273000)
+    #lumi = getLuminosity(273000)
+    lumi = 38.3
     if not gmap: return
     line = ROOT.TLine()
     line.SetLineColor(ROOT.kGray)
     updateLine = ROOT.TLine()
     updateLine.SetLineStyle(2)
     updateLine.SetLineColor(ROOT.kBlack)
-    leg = ROOT.TLegend(.2, .65, .55, .9)
+    leg = ROOT.TLegend(.2, .65, .65, .9)
+    leg.SetHeader("Tracker alignment in 2016 data-taking used as reference")
     leg.SetNColumns(2)
     leg.AddEntry(line, "Update threshold", "l")
     leg.AddEntry(updateLine, "Alignment update", "l")
@@ -277,11 +286,11 @@ def drawGraphsVsX(gmap, xaxis, savename, magnetGraph, specialRuns=[]):
         line.DrawLine(xmin, +p.cut, xmax, +p.cut)
         for r in specialRuns:
             updateLine.DrawLine(r, p.minDraw, r, p.maxDraw)
-	magnetGraph.Draw()    
+	magnetGraph.Draw("same, a3")    
         text = ROOT.TLatex()
         text.DrawLatexNDC(.08, .945, "#scale[1.2]{#font[61]{CMS}} #font[52]{Preliminary}")
         text.DrawLatexNDC(.79, .945, "{:.1f} fb^{{-1}} (13TeV)".format(lumi))
-    	text.DrawLatexNDC(.15, .899, "#scale[85]{Tracker alignment in 2016 data-taking used as reference}")
+    	#text.DrawLatexNDC(.15, .899, "#scale[0.85]{Tracker alignment in 2016 data-taking used as reference}")
         if ip == 0: leg.Draw()
         save(savename+"_"+p.name, plotDir, endings=[".pdf",".png", ".root"])
 
@@ -350,23 +359,57 @@ def stringToSqlTimeString(timeStr):
 def string2Time(timeStr):
     return ROOT.TDatime(timeStr).Convert(0)
 
-
-def ReadMagnetFieldHistory(filename):
+def getRunFromTime(inputTime, dbFile ="runTime.pkl"):
+    #time is ROOT::TDatime
+    #sqlTimeStr = stringToSqlTimeString(time)
+    with open(dbFile) as f:
+        db = pickle.load(f)
+    timeConvertedDb = dict( [(run, string2Time(time)) for run,time in db.iteritems()])
+    for run, time in sorted(timeConvertedDb.iteritems(), key=itemgetter(1)):
+        if inputTime < time: return run
+    print "No matching run found"
+    return 0
+    
+#with open('runTime.pkl') as f:
+#    db = pickle.load(f)
+#    for run, time in sorted(db.iteritems()):
+#        print run, time,
+    
+    
+def ReadMagnetFieldHistory(filename, convertToTime=False):
     mgnt = ROOT.TGraphErrors()
     with open(filename) as f:
         content = f.readlines()
         for i, line in enumerate(content):
             timeStr, fieldStr = line.split(",")
+	    
             time = string2Time(stringToSqlTimeString(timeStr))
             field = float(fieldStr)
-            mgnt.SetPoint(i, time, 0)
+	    if not convertToTime:
+	        run = getRunFromTime(time)
+		if run!=0:
+		   print time, run
+		   mgnt.SetPoint(i, run, 0)
+	    else:
+                mgnt.SetPoint(i, time, 0)
             mgnt.SetPointError(i, 0, 50 if field>3.7 else 0)
     return mgnt
 
+def GetFieldHistoryByHand():
+   time=["11.5.","24.6.","24.6.","24.6.","29.6.","30.6."," 2.7."," 2.7.","25.7.","26.7.","26.7.","29.7.","01.9.","01.9.","01.9.","02.9.","10.9.","10.9.","17.9.","17.9.","31.10","31.10","4.11.","4.11","5.12."]
+   x  = [ 273150, 275674, 275674, 275752, 275960, 276044, 276217, 276235, 277420, 277421, 277784, 277785, 279844, 279845, 279865, 279887, 280384, 280385, 281009, 281010, 284044, 284045, 285372, 285372, 286520, 286521 ]
+   y  = [      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0,      0]
+   ex = [      0,      1,      1,      0,      0,      1,      1,      0,      0,      1,      1,      0,      0,      1,      1,      0,      0,      1,      1,      0,      0,      1,      1,      0,      0,      1]
+   ey = [      0,     30,     30,      0,      0,     30,     30,      0,      0,     30,     30,      0,      0,     30,     30,      0,      0,     30,     30,      0,      0,     30,     30,      0,      0,     30]
+   ge = ROOT.TGraphErrors(5, array('d', x), array('d', y), array('d', ex), array('d', ey))
+   ge.SetFillColor(4)
+   ge.SetFillStyle(3010)
+   return ge;
+
 
 if __name__ == "__main__":
-    downloadViaJson.getGridCertificat()
-    downloadViaJson.downloadViaJson()
+    #downloadViaJson.getGridCertificat()
+    #downloadViaJson.downloadViaJson()
     inputHists = getInputHists()
 
     # draw new runs:
@@ -375,22 +418,26 @@ if __name__ == "__main__":
         if run not in alreadyPlotted:
             drawHists(hmap, "Run{}".format(run), run)
 
+    filename = "MagnetHistory.txt"
+ #   magnetGraphvsTime = ReadMagnetFieldHistory(filename, convertToTime=True)
+    #magnetGraphvsRun  = ReadMagnetFieldHistory(filename, convertToTime=False)
+    magnetGraphvsRun  = GetFieldHistoryByHand()
+
     # vs run
     updateRuns = [x for x in getUpdateRuns("TrackerAlignment_PCL_byRun_v0_express") if x >= 273000]
     updateFields = [getField(x) for x in updateRuns]
     graphsVsRun = getGraphsVsRun(inputHists)
-    drawGraphsVsX(graphsVsRun, "run", "vsRun", updateRuns)
+    drawGraphsVsX(graphsVsRun, "run", "vsRun", magnetGraphvsRun, updateRuns)
 
     # vs time
-    filename = "magnetHistory.txt"
-    magnetGraph = ReadMagnetFieldHistory(filename)
-    updateTimes = [string2Time(getTime(x)) for x in updateRuns]
-    graphsVsTime = getGraphsVsRun(inputHists, convertToTime=True)
-    drawGraphsVsX(graphsVsTime, "time", "vsTime", magnetGraph, updateTimes)
-    updateFile("indexTemplate.html", "/afs/cern.ch/user/a/auterman/public/index.html",
-        {
-            "date": datetime.datetime.today().isoformat(' '),
-            "table": getTableString(inputHists)
-        })
+#    updateTimes = [string2Time(getTime(x)) for x in updateRuns]
+#    graphsVsTime = getGraphsVsRun(inputHists, convertToTime=True)
+#    print type(magnetGraph)
+#    drawGraphsVsX(graphsVsTime, "time", "vsTime", magnetGraphvsTime, updateTimes)
+#    updateFile("indexTemplate.html", "/afs/cern.ch/user/a/auterman/public/index.html",
+#        {
+#            "date": datetime.datetime.today().isoformat(' '),
+#            "table": getTableString(inputHists)
+#        })
 
 
